@@ -128,6 +128,20 @@ To add a custom experiment, add an entry to `experimentPresets` in `config/exper
 | `sensory_sigma` | (2) | Angular width of I(θ,t) | [rad] | 0.2 |
 | `sensory_type` | (2) | `"uniform"` or `"beam"` | — | "beam" |
 
+## Preset → Phenomenon mapping
+
+| Preset | Phenomenon | Key observation |
+|--------|------------|----------------|
+| Phase transition | Ignition / extinction | M(t): 0 ⇄ nonzero, β* appears/disappears |
+| Propofol | Smooth anesthesia | Continuous suppression of M(t) |
+| Ketamine | Dissociative fluctuation | Irregular oscillation near threshold |
+| Midazolam | Shallow sedation | Partial reduction, M(t) > 0 maintained |
+| Desflurane | Rapid switching | Abrupt on/off transition |
+| Localization | PTSD/DID-like trapping | High L(t), persistent β* |
+| Hysteresis | History dependence | Asymmetric M(t) trajectory |
+
+All presets are defined in config/experiments.js and can be modified to explore parameter sensitivity.
+
 ## References
 
 - **Cognitive Field Dynamics v13.1**: Morichika, M. (2026). *Cognitive Field Dynamics: A Fluid-Mechanical Formulation of Belief Dynamics on a Bounded Polar Domain.* [ResearchGate](https://www.researchgate.net/publication/403279648)
