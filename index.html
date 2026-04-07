@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CFD v13.1 Simulator</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌋</text></svg>">
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a24;
+            color: #eee;
+            font-family: sans-serif;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px 350px;
+            gap: 20px;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .panel {
+            background: #252530;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+        }
+
+        canvas {
+            background: #000;
+            border: 1px solid #444;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .controls label {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .controls select,
+        .controls input {
+            width: 100%;
+            margin-top: 5px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px;
+        }
+
+        button {
+            background: #4a90e2;
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #357abd;
+        }
+
+        .eq-box {
+            background: #1e1e28;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #4a90e2;
+            font-size: 13px;
+        }
+
+        .eq-ref {
+            color: #4a90e2;
+            font-size: 11px;
+            float: right;
+            font-family: monospace;
+        }
+
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            font-size: 15px;
+        }
+
+        .version-tag {
+            color: #888;
+            font-size: 11px;
+            text-align: right;
+            padding: 5px 10px;
+        }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="panel">
+            <h3 style="margin-top: 0px;">Hysteresis Loop (π<sub>int</sub> vs M)</h3>
+            <canvas id="loopCanvas" width="400" height="400"></canvas>
+
+            <h3 style="margin-top: 15px;">Order parameters &amp; time series</h3>
+            <canvas id="chartCanvas" width="400" height="150"></canvas>
+
+            <h3 style="margin-top: 15px; margin-bottom: 10px;">Information density \(\rho\) &amp; potential \(F\)</h3>
+            <canvas id="heatCanvas" width="200" height="200"
+                style="width: 200px; height: 200px; display: block; margin: 0 auto;"></canvas>
+
+            <div id="coordDisplay"
+                style="margin-top: 12px; font-family: monospace; font-size: 13px; color: #ffc800; text-align: center;">
+                Focus (none)</div>
+
+            <div id="rhoDisplay"
+                style="margin-top: 6px; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: #aaa; text-align: center;">
+                Max ρ: 0.00 | M: 0.00 | G: 0.00 | γ: 0.00</div>
+        </div>
+
+        <div class="panel controls">
+            <h3>Experiment control</h3>
+            <label>Preset</label>
+            <select id="presetSelect"></select>
+
+            <h4 style="margin-top: 20px; border-bottom: 1px solid #444;">Parameters</h4>
+            <div id="paramDisplay" style="font-family: monospace; font-size: 11px; color: #aaa; line-height: 1.6;">
+            </div>
+
+            <label style="margin-top: 20px;">
+                <span>Control \(\pi_{\mathrm{int}}\): <span id="pi_val">1.00</span></span>
+            </label>
+            <input type="range" id="pi_slider" min="0.5" max="2.0" step="0.01" value="1.0">
+            <div style="font-size: 11px; color: #888; text-align: right; margin-top: 2px;">Red: above ignition threshold \(\lambda_0\)</div>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button id="btnRun">Run / Pause</button>
+                <button id="btnReset" style="background: #555;">Reset</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>CFD v13.1 — Equation reference</h3>
+            <div class="eq-box">
+                <span class="eq-ref">Eq.(1)</span>
+                <strong>① ρ evolution (r &lt; 1)</strong><br>
+                $$ \frac{\partial\rho}{\partial t} = \underbrace{-\nabla\cdot(\rho\mathbf{v})}_{\text{advection}} +
+                \underbrace{\frac{D_0}{1 + \frac{\pi_{ext}+\pi_{int}}{\pi_0}}\nabla^2\rho}_{\text{diffusion}} +
+                \underbrace{(\pi_{int}-\lambda_0)\rho -
+                \kappa\rho^2}_{\text{reaction}} $$
+            </div>
+            <div class="eq-box">
+                <span class="eq-ref">Eq.(2)</span>
+                <strong>② Boundary (Markov blanket, r = 1)</strong><br>
+                $$ -\mathbf{n}\cdot\left(\rho\mathbf{v} - D_{mask}\nabla\rho\right) = \pi_{ext}\cdot I(\theta,t) $$
+            </div>
+            <div class="eq-box">
+                <span class="eq-ref">Eq.(3)+(4)</span>
+                <strong>③ Flow velocity &amp; defensive viscosity</strong><br>
+                $$ \mathbf{v} = -\frac{B}{\gamma(G)}\nabla F \qquad \gamma = \gamma_{min} +
+                \frac{\gamma_{max}-\gamma_{min}}{1+e^{-a(G-G_{th})}} $$
+            </div>
+            <div class="eq-box">
+                <span class="eq-ref">Eq.(5)</span>
+                <strong>④ F update (terrain erosion)</strong><br>
+                $$ \frac{\tau_{base}\,/\!\left(\frac{r+r_0}{R}\right)}{1+\rho/\rho_0}\;\frac{\partial
+                F}{\partial t} = -(F-F_0) - c_{ero} \!\iint\!
+                W\,\rho\, d\beta' $$
+            </div>
+            <div class="eq-box">
+                <span class="eq-ref">Eq.(6)</span>
+                <strong>⑤ Transformation resistance</strong><br>
+                $$ G[\rho,F] = k_G\!\iint \rho\,F\,dr\,d\theta $$
+            </div>
+            <div class="eq-box" style="border-left-color: #888;">
+                <strong>Noise</strong><br>
+                $$ \xi \sim \mathcal{N}(0,\sigma^2)\cdot\sqrt{\Delta t} $$
+            </div>
+            <div class="version-tag">Cognitive Field Dynamics v13.1 (2026-04)</div>
+        </div>
+    </div>
+
+    <script type="module" src="./sim/app.js"></script>
+</body>
+
+</html>
